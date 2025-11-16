@@ -1,10 +1,65 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 const LandingPage = () => {
-  const [activeTab, setActiveTab] = useState('services')
   const [showCollegeInput, setShowCollegeInput] = useState(false)
+  const [collegeQuery, setCollegeQuery] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [selectedCollege, setSelectedCollege] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    async function check() {
+      try {
+        const res = await fetch('/api/auth/session')
+        const data = await res.json()
+        if (data?.ok && data.user?.collegeName) {
+          const encoded = encodeURIComponent(data.user.collegeName)
+          router.replace(`/college/${encoded}/dashboard`)
+        }
+      } catch (e) {}
+    }
+    check()
+  }, [router])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const q = collegeQuery.trim()
+    async function fetchSuggestions() {
+      if (!showCollegeInput || q.length < 2) {
+        setSuggestions([])
+        return
+      }
+      try {
+        setLoading(true)
+        const res = await fetch(`/api/colleges?query=${encodeURIComponent(q)}&limit=8`, { signal: controller.signal })
+        const data = await res.json()
+        const list = Array.isArray(data.results)
+          ? data.results.map(item => (typeof item === 'string' ? { name: item } : item))
+          : []
+        setSuggestions(list)
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          setSuggestions([])
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSuggestions()
+    return () => controller.abort()
+  }, [collegeQuery, showCollegeInput])
+
+  function handleSearch() {
+    // Enforce selection from suggestions
+    const name = selectedCollege?.name
+    if (!name) return
+    const encoded = encodeURIComponent(name)
+    router.push(`/college/${encoded}/login`)
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
@@ -59,19 +114,54 @@ const LandingPage = () => {
           </p>
           
           {/* College Input (hidden until Get Started click) */}
-          <div className="max-w-md mx-auto mb-12 overflow-hidden">
-            <div
-              className={`transform transition-transform duration-500 ease-out ${
-                showCollegeInput ? 'translate-x-0' : '-translate-x-full'
-              }`}
-            >
-              <input
-                type="text"
-                placeholder="Enter your college name"
-                className="w-full px-4 py-3 rounded-lg border-0 text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-              />
+          {showCollegeInput && (
+            <div className="max-w-md mx-auto mb-12">
+              <div className="flex items-center">
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  value={collegeQuery}
+                  onChange={(e) => { setCollegeQuery(e.target.value); setSelectedCollege(null) }}
+                  placeholder="Enter your college name"
+                  className="w-full px-4 py-3 rounded-lg border-0 text-gray-900 shadow-sm focus:outline-none bg-white"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch() } }}
+                />
+                {(suggestions.length > 0 || loading) && (
+                  <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg text-left">
+                    {loading && (
+                      <div className="px-4 py-3 text-sm text-gray-500">Searching…</div>
+                    )}
+                    {!loading && suggestions.map((s, idx) => (
+                      <button
+                        type="button"
+                        key={`${s.name}-${idx}`}
+                        className="w-full text-left px-4 py-3 hover:bg-blue-50 focus:bg-blue-50"
+                        onClick={() => { setSelectedCollege(s); setCollegeQuery(s.name) }}
+                      >
+                        <span className="font-medium text-gray-900">{s.name}</span>
+                        {s.domain ? (
+                          <span className="ml-2 text-gray-500 text-sm">@{s.domain}</span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className='ml-4'>
+                <button
+                  onClick={handleSearch}
+                  disabled={!selectedCollege}
+                  className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition duration-200 shadow-lg cursor-pointer disabled:opacity-60"
+                >
+                  Search
+                </button>
+              </div>
+              </div>
+              {!selectedCollege && (
+                <p className="mt-2 text-sm text-gray-600 text-center">Please select a college from the list.</p>
+              )}
             </div>
-          </div>
+          )}
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

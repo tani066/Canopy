@@ -13,3 +13,44 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model College {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  domain       String   // e.g. "iitd.ac.in"
+  city         String?
+  state        String?
+  logoUrl      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  users        User[]
+  listings     Listing[]
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  otp         String?
+  otpExpiry   DateTime?
+  verified    Boolean  @default(false)
+  role        String   @default("student") // student, admin
+  collegeId   Int
+  college     College  @relation(fields: [collegeId], references: [id])
+  createdAt   DateTime @default(now())
+  listings    Listing[]
+}
+model Listing {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  type        String   // "product" or "service"
+  price       Float?
+  category    String?
+  imageUrl    String?
+  userId      Int
+  collegeId   Int
+  user        User     @relation(fields: [userId], references: [id])
+  college     College  @relation(fields: [collegeId], references: [id])
+  createdAt   DateTime @default(now())
+}

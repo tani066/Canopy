@@ -10,7 +10,6 @@ function splitCSVLine(line) {
   for (let i = 0; i < line.length; i++) {
     const ch = line[i]
     if (ch === '"') {
-      // Toggle inQuotes, handle escaped quotes
       if (inQuotes && line[i + 1] === '"') {
         current += '"'
         i++
@@ -42,7 +41,7 @@ export async function GET(request) {
   }
 
   try {
-    const filePath = path.join(process.cwd(), 'database.csv')
+    const filePath = path.join(process.cwd(), 'college_domains.csv')
     const content = await fs.readFile(filePath, 'utf8')
 
     const lines = content.split(/\r?\n/).filter(l => l && l.trim())
@@ -50,47 +49,42 @@ export async function GET(request) {
       return NextResponse.json({ results: [] })
     }
 
-    // Determine header and likely name column
     const headerCells = splitCSVLine(lines[0]).map(h => h.toLowerCase())
-    let nameIndex = headerCells.findIndex(h =>
-      ['college', 'college name', 'name', 'university', 'institute', 'institution'].some(k => h.includes(k))
-    )
+    const nameIndex = headerCells.findIndex(h => h.includes('college name') || h.includes('name'))
+    const domainIndex = headerCells.findIndex(h => h.includes('email domain') || h.includes('domain'))
 
-    // If header not helpful, attempt heuristic: pick the longest text column from first data row
-    if (nameIndex === -1 && lines.length > 1) {
-      const sample = splitCSVLine(lines[1])
-      let maxLength = -1
-      for (let i = 0; i < sample.length; i++) {
-        const len = sample[i].length
-        if (len > maxLength) {
-          maxLength = len
-          nameIndex = i
-        }
-      }
+    if (nameIndex === -1) {
+      return NextResponse.json({ results: [] })
     }
 
     const resultsSet = new Set()
     for (let i = 1; i < lines.length; i++) {
       const cells = splitCSVLine(lines[i])
       const name = normalize(cells[nameIndex] || '')
+      const rawDomain = domainIndex >= 0 ? normalize(cells[domainIndex] || '') : ''
+      const domain = rawDomain.replace(/^@/, '').toLowerCase()
       if (!name) continue
       if (name.toLowerCase().includes(query.toLowerCase())) {
-        resultsSet.add(name)
+        resultsSet.add(JSON.stringify({ name, domain }))
         if (resultsSet.size >= limit) break
       }
     }
 
-    const results = Array.from(resultsSet)
+    const results = Array.from(resultsSet).map(s => JSON.parse(s))
     return NextResponse.json({ results })
   } catch (err) {
-    // Fallback: try regex search for likely college names within file when CSV parsing fails
+    // Fallback: simple regex search if parsing fails
     try {
-      const filePath = path.join(process.cwd(), 'database.csv')
+      const filePath = path.join(process.cwd(), 'college_domains.csv')
       const raw = await fs.readFile(filePath, 'utf8')
-      const pattern = new RegExp(`[^\n,]*${query}[^\n,]*`, 'i')
-      const candidates = raw.split(/\r?\n/)
-        .map(line => (line.match(pattern) || [])[0])
-        .filter(Boolean)
+      const lines = raw.split(/\r?\n/)
+      const header = splitCSVLine(lines[0]).map(h => h.toLowerCase())
+      const nameIndex = header.findIndex(h => h.includes('college name') || h.includes('name'))
+      const domainIndex = header.findIndex(h => h.includes('email domain') || h.includes('domain'))
+      const candidates = lines.slice(1)
+        .map(line => splitCSVLine(line))
+        .filter(cells => cells.length > nameIndex && (cells[nameIndex] || '').toLowerCase().includes(query.toLowerCase()))
+        .map(cells => ({ name: cells[nameIndex], domain: (cells[domainIndex] || '').replace(/^@/, '').toLowerCase() }))
         .slice(0, limit)
       return NextResponse.json({ results: candidates })
     } catch (e) {
