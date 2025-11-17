@@ -29,7 +29,7 @@ export async function POST(request) {
     if (!secret) {
       return NextResponse.json({ ok: false, error: 'jwt_secret_missing' }, { status: 500 })
     }
-    const token = jwt.sign(payload, secret, { expiresIn: '7d' })
+    const token = jwt.sign(payload, secret, { expiresIn: '1h' })
 
     const res = NextResponse.json({ ok: true, user: { id: user.id, name: user.name, collegeName: user.college?.name } })
     res.cookies.set('canopy_token', token, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60, secure: process.env.NODE_ENV === 'production' })

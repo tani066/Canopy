@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-
+import { Input } from "@/components/ui/input"
 const LandingPage = () => {
   const [showCollegeInput, setShowCollegeInput] = useState(false)
   const [collegeQuery, setCollegeQuery] = useState('')
@@ -62,21 +62,21 @@ const LandingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <header className="bg-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               {/* Enhanced Logo */}
-              <div className="w-12 h-12 bg-linear-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
                 <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
                   <path d="M6 8a2 2 0 11-4 0 2 2 0 014 0zM4 15a4 4 0 00-8 0v3h8v-3z"/>
                 </svg>
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   Canopy
                 </h1>
                 <p className="text-sm text-gray-500">Student Marketplace</p>
@@ -91,7 +91,7 @@ const LandingPage = () => {
             </nav>
             
             {/* Login Button */}
-            <button className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition duration-200">
+            <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition duration-200">
               Sign In
             </button>
           </div>
@@ -103,7 +103,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
             Connect, Learn & 
-            <span className="bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               Earn
             </span>
           </h2>
@@ -118,7 +118,7 @@ const LandingPage = () => {
             <div className="max-w-md mx-auto mb-12">
               <div className="flex items-center">
               <div className="relative w-full">
-                <input
+                <Input
                   type="text"
                   value={collegeQuery}
                   onChange={(e) => { setCollegeQuery(e.target.value); setSelectedCollege(null) }}
@@ -151,7 +151,7 @@ const LandingPage = () => {
                 <button
                   onClick={handleSearch}
                   disabled={!selectedCollege}
-                  className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition duration-200 shadow-lg cursor-pointer disabled:opacity-60"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition duration-200 shadow-lg cursor-pointer disabled:opacity-60"
                 >
                   Search
                 </button>
@@ -166,7 +166,7 @@ const LandingPage = () => {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition duration-200 shadow-lg cursor-pointer"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition duration-200 shadow-lg cursor-pointer"
               onClick={() => setShowCollegeInput(true)}
             >
               Get Started

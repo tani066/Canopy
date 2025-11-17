@@ -129,7 +129,7 @@ export default function CollegeLoginPage() {
   }, [step, remainingSeconds])
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-xl mx-auto px-4 py-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Login - {collegeName}</h1>
         {college?.domain && (
