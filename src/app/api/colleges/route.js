@@ -36,7 +36,7 @@ export async function GET(request) {
   const query = normalize(searchParams.get('query'))
   const limit = Number(searchParams.get('limit') || 10)
 
-  if (!query || query.length < 2) {
+  if (!query || query.length < 1) {
     return NextResponse.json({ results: [] })
   }
 
