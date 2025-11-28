@@ -29,10 +29,12 @@ export async function POST(request) {
     if (!secret) {
       return NextResponse.json({ ok: false, error: 'jwt_secret_missing' }, { status: 500 })
     }
-    const token = jwt.sign(payload, secret, { expiresIn: '1h' })
+    const access = jwt.sign(payload, secret, { expiresIn: '1h' })
+    const refresh = jwt.sign({ uid: user.id }, secret, { expiresIn: '30d' })
 
     const res = NextResponse.json({ ok: true, user: { id: user.id, name: user.name, collegeName: user.college?.name } })
-    res.cookies.set('canopy_token', token, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60, secure: process.env.NODE_ENV === 'production' })
+    res.cookies.set('canopy_access', access, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60, secure: process.env.NODE_ENV === 'production' })
+    res.cookies.set('canopy_refresh', refresh, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 30 * 24 * 60 * 60, secure: process.env.NODE_ENV === 'production' })
     return res
   } catch (e) {
     return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 })

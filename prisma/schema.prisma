@@ -35,6 +35,7 @@ model User {
   otpExpiry   DateTime?
   verified    Boolean  @default(false)
   role        String   @default("student") // student, admin
+  collegeName String?
   collegeId   Int
   college     College  @relation(fields: [collegeId], references: [id])
   createdAt   DateTime @default(now())
@@ -48,6 +49,12 @@ model Listing {
   price       Float?
   category    String?
   imageUrl    String?
+  // Product-specific fields
+  condition   String?
+  brandModel  String?
+  originalPrice Float?
+  negotiable  Boolean?
+  images      String[]
   userId      Int
   collegeId   Int
   user        User     @relation(fields: [userId], references: [id])

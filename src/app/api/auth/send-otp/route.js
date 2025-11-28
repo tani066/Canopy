@@ -77,8 +77,8 @@ export async function POST(request) {
     try {
       await prisma.user.upsert({
         where: { email },
-        update: { name, otp, otpExpiry: expiry, verified: false, college: { connect: { id: college.id } } },
-        create: { name, email, otp, otpExpiry: expiry, verified: false, role: 'student', college: { connect: { id: college.id } } }
+        update: { name, otp, otpExpiry: expiry, verified: false, collegeName: csvCollege.name, college: { connect: { id: college.id } } },
+        create: { name, email, otp, otpExpiry: expiry, verified: false, role: 'student', collegeName: csvCollege.name, college: { connect: { id: college.id } } }
       })
     } catch (e) {
       return NextResponse.json({ ok: false, error: 'db_error_user' }, { status: 500 })

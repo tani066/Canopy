@@ -29,7 +29,7 @@ const LandingPage = () => {
     const controller = new AbortController()
     const q = collegeQuery.trim()
     async function fetchSuggestions() {
-      if (!showCollegeInput || q.length < 2) {
+      if (!showCollegeInput || q.length < 1) {
         setSuggestions([])
         return
       }
