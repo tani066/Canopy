@@ -19,7 +19,7 @@ export function ListingCard({ item, type, isMine, onEdit, onDelete, onClick }) {
       className="group bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer flex flex-col h-full"
       onClick={onClick}
     >
-      <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+      <div className="relative aspect-4/3 bg-slate-100 overflow-hidden">
         {type === "product" ? (
           <Carousel
             images={item.images && item.images.length ? item.images : item.imageUrl ? [item.imageUrl] : []}
