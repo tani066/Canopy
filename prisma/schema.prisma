@@ -48,12 +48,16 @@ model Listing {
   price       Float?
   category    String?
   imageUrl    String?
+  contactPhone String?
   // Product-specific fields
   condition   String?
   brandModel  String?
   originalPrice Float?
   negotiable  Boolean?
   images      String[]
+  // Service-specific fields
+  skills      String?
+  pricingType String? // per_hour | per_session | per_month | fixed_package
   userId      Int
   collegeId   Int
   user        User     @relation(fields: [userId], references: [id])

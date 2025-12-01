@@ -46,6 +46,9 @@ export async function PATCH(request, { params }) {
   if (typeof body.brandModel === 'string') data.brandModel = body.brandModel.trim() || null
   if (typeof body.originalPrice === 'number') data.originalPrice = body.originalPrice
   if (typeof body.negotiable === 'boolean') data.negotiable = body.negotiable
+  if (typeof body.contactPhone === 'string') data.contactPhone = body.contactPhone.trim() || null
+  if (typeof body.skills === 'string') data.skills = body.skills.trim() || null
+  if (typeof body.pricingType === 'string') data.pricingType = body.pricingType.trim() || null
   if (Array.isArray(body.images)) {
     const imgs = body.images.filter(u => typeof u === 'string' && u.trim()).slice(0, 6)
     data.images = imgs

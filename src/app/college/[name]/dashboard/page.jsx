@@ -1,130 +1,142 @@
 "use client"
+
 import { AppSidebar } from "@/components/App-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { useEffect, useMemo, useState } from "react"
-import { useParams, useSearchParams } from "next/navigation"
+import { useParams, useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge" 
+import Carousel from "@/components/ui/carousal"
+import WhatsAppButton from "@/components/ui/whatsappButton"
+import { motion, AnimatePresence } from "framer-motion"
+import { ListingCard } from "@/components/dashboard/ListingCard"
+import { EmptyState } from "@/components/dashboard/EmptyState"
+import { ListingForm } from "@/components/dashboard/ListingForm"
+import { 
+  Plus, 
+ 
 
-function Carousel({ images, fallback, alt, className }) {
-  const [i, setI] = useState(0)
-  useEffect(() => {
-    if (!images || images.length <= 1) return
-    const t = setInterval(() => setI(prev => (prev + 1) % images.length), 2500)
-    return () => clearInterval(t)
-  }, [images])
-  const src = (images && images[i]) || fallback
-  if (!src) return null
-  return <img src={src} alt={alt} className={className || "w-full h-40 object-cover"} />
+
+  Loader2, 
+  ShoppingBag, 
+  Briefcase, 
+  User 
+} from "lucide-react"
+
+// --- Animation Variants ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { 
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
 }
 
-function Section({ type, items }) {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {items.map((it) => (
-          <div key={it.id} className="bg-white rounded-lg shadow p-0 overflow-hidden animate-in fade-in cursor-pointer" onClick={it.onClick}
-          >
-            {type === 'product' ? (
-              <Carousel images={it.images} fallback={it.imageUrl} alt={it.title} className="w-full h-40 object-cover" />
-            ) : (
-              it.imageUrl ? (
-                <img src={it.imageUrl} alt={it.title} className="w-full h-40 object-cover" />
-              ) : null
-            )}
-            <div className="p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{it.title}</h3>
-                  <div className="mt-1 text-sm text-gray-600">{it.category}</div>
-                </div>
-                {typeof it.price === 'number' ? (
-                  <div className="text-right">
-                    <div className="text-base font-semibold text-gray-900">₹{it.price}</div>
-                    {type === 'product' && typeof it.originalPrice === 'number' ? (
-                      <div className="text-xs text-gray-500 line-through">₹{it.originalPrice}</div>
-                    ) : null}
-                    {type === 'product' && it.negotiable ? <div className="mt-1 inline-block rounded bg-green-50 text-green-700 text-xs px-2 py-1">Negotiable</div> : null}
-                  </div>
-                ) : null}
-              </div>
-              {type === 'product' && it.condition ? <div className="mt-2 text-sm text-gray-700">Condition: {it.condition}</div> : null}
-              {type === 'product' && it.brandModel ? <div className="mt-1 text-sm text-gray-700">Brand/Model: {it.brandModel}</div> : null}
-              <p className="text-gray-700 mt-3">{it.description}</p>
-              <div className="mt-3 text-sm text-gray-500">By {it.user?.name}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { 
+    y: 0, 
+    opacity: 1,
+    transition: { type: "spring", stiffness: 100 }
+  }
 }
+
+// --- Reusable Components ---
+
+// --- Main Page Component ---
 
 export default function CollegeDashboardPage() {
   const { name: paramName } = useParams()
   const collegeName = decodeURIComponent(paramName || '')
+  const router = useRouter()
   const searchParams = useSearchParams()
   const view = useMemo(() => searchParams.get('view') || 'overview', [searchParams])
+
   const [services, setServices] = useState([])
   const [products, setProducts] = useState([])
   const [myServices, setMyServices] = useState([])
   const [myProducts, setMyProducts] = useState([])
-  const [form, setForm] = useState({ type: 'service', title: '', description: '', price: '', category: '', file: null, files: [], condition: '', brandModel: '', originalPrice: '', negotiable: false })
-  const [loading, setLoading] = useState(false)
+  
+  // Consolidating loading states
+  const [isFetching, setIsFetching] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [form, setForm] = useState({ 
+    type: 'service', title: '', description: '', price: '', category: '', 
+    contactPhone: '', files: [], condition: '', brandModel: '', 
+    originalPrice: '', negotiable: false, skills: '', pricingType: '', existingImages: [] 
+  })
+  
+  const [formError, setFormError] = useState('')
   const [open, setOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [selected, setSelected] = useState(null)
   const [user, setUser] = useState(null)
   const [editingId, setEditingId] = useState(null)
 
+  // --- Data Fetching ---
   useEffect(() => {
-    async function load() {
+    async function initData() {
+      setIsFetching(true)
       try {
-        const s = await fetch('/api/auth/session')
-        const sd = await s.json()
-        if (sd?.ok) setUser(sd.user)
-      } catch (e) {}
-      try {
-        const resS = await fetch('/api/listings?type=service')
-        const dataS = await resS.json()
-        if (dataS?.ok) setServices(dataS.listings)
-      } catch (e) {}
-      try {
-        const resP = await fetch('/api/listings?type=product')
-        const dataP = await resP.json()
-        if (dataP?.ok) setProducts(dataP.listings)
-      } catch (e) {}
+        const [sess, sRes, pRes] = await Promise.all([
+          fetch('/api/auth/session').then(r => r.json()),
+          fetch('/api/listings?type=service').then(r => r.json()),
+          fetch('/api/listings?type=product').then(r => r.json())
+        ])
+        if (sess?.ok) setUser(sess.user)
+        if (sRes?.ok) setServices(sRes.listings)
+        if (pRes?.ok) setProducts(pRes.listings)
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setIsFetching(false)
+      }
     }
-    load()
+    initData()
   }, [])
 
   useEffect(() => {
     async function loadMine() {
       if (view !== 'mine') return
       try {
-        const resS = await fetch('/api/listings?mine=true&type=service')
-        const dataS = await resS.json()
-        if (dataS?.ok) setMyServices(dataS.listings)
-      } catch (e) {}
-      try {
-        const resP = await fetch('/api/listings?mine=true&type=product')
-        const dataP = await resP.json()
-        if (dataP?.ok) setMyProducts(dataP.listings)
-      } catch (e) {}
+        const [sRes, pRes] = await Promise.all([
+          fetch('/api/listings?mine=true&type=service').then(r => r.json()),
+          fetch('/api/listings?mine=true&type=product').then(r => r.json())
+        ])
+        if (sRes?.ok) setMyServices(sRes.listings)
+        if (pRes?.ok) setMyProducts(pRes.listings)
+      } catch (e) { console.error(e) }
     }
     loadMine()
   }, [view])
 
+  // --- Handlers ---
+  const handleViewChange = (val) => {
+    const params = new URLSearchParams(searchParams)
+    params.set('view', val)
+    router.push(`?${params.toString()}`)
+  }
+
   async function submitListing(e) {
     e.preventDefault()
     if (!form.title || !form.description) return
-    setLoading(true)
+    if (!form.contactPhone) { setFormError('Please provide a contact number'); return }
+    if (form.type === 'product' && !editingId) {
+      const count = (form.files?.filter(Boolean).length || 0)
+      if (count < 2) {
+        setFormError('Please add at least 2 photos for your product')
+        return
+      }
+    }
+
+    setIsSubmitting(true)
     try {
+      // (Keep existing upload logic exactly as provided)
       let imageUrl
       const uploaded = []
-      const allFiles = (form.files || []).slice(0, 6)
-      if (form.file) allFiles.unshift(form.file)
+      const allFiles = (form.files || []).filter(Boolean).slice(0, 6)
       for (const f of allFiles) {
         if (!f) continue
         const fd = new FormData()
@@ -132,81 +144,85 @@ export default function CollegeDashboardPage() {
         fd.append('folder', form.type === 'product' ? 'canopy/products' : 'canopy/services')
         const up = await fetch('/api/upload', { method: 'POST', body: fd })
         const upData = await up.json()
-        if (upData?.ok) {
-          uploaded.push(upData.url)
-        }
+        if (upData?.ok) uploaded.push(upData.url)
       }
-      imageUrl = uploaded[0]
+      imageUrl = uploaded[0] || (editingId ? form.existingImages[0] : null)
+
+      // Payload construction
+      const basePayload = {
+        title: form.title,
+        description: form.description,
+        price: form.price ? Number(form.price) : undefined,
+        category: form.category || undefined,
+        imageUrl,
+        contactPhone: form.contactPhone,
+        negotiable: typeof form.negotiable === 'boolean' ? form.negotiable : undefined,
+      }
+
+      const specificPayload = form.type === 'product' ? {
+        ...basePayload,
+        condition: form.condition || undefined,
+        brandModel: form.brandModel || undefined,
+        originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
+        images: editingId ? [...(form.existingImages || []), ...uploaded] : uploaded
+      } : {
+        ...basePayload,
+        skills: form.skills || undefined,
+        pricingType: form.pricingType || undefined,
+        images: uploaded
+      }
+
       if (editingId) {
-        const payload = form.type === 'product' ? {
-          title: form.title,
-          description: form.description,
-          price: form.price ? Number(form.price) : undefined,
-          category: form.category || undefined,
-          imageUrl,
-          condition: form.condition || undefined,
-          brandModel: form.brandModel || undefined,
-          originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
-          negotiable: !!form.negotiable,
-          images: uploaded.length ? uploaded : undefined
-        } : {
-          title: form.title,
-          description: form.description,
-          price: form.price ? Number(form.price) : undefined,
-          category: form.category || undefined,
-          imageUrl
-        }
-        const res = await fetch(`/api/listings/${editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        const res = await fetch(`/api/listings/${editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(specificPayload) })
         const data = await res.json()
         if (data?.ok) {
-          setMyServices(prev => prev.map(l => l.id === editingId ? data.listing : l))
-          setMyProducts(prev => prev.map(l => l.id === editingId ? data.listing : l))
-          setEditingId(null)
-          setOpen(false)
+           // Update local state intelligently
+           const updateList = (list) => list.map(l => l.id === editingId ? data.listing : l)
+           setMyServices(updateList)
+           setMyProducts(updateList)
+           setServices(updateList)
+           setProducts(updateList)
+           setEditingId(null)
+           setOpen(false)
         }
       } else {
-        const payload = form.type === 'product' ? {
-          type: form.type,
-          title: form.title,
-          description: form.description,
-          price: form.price ? Number(form.price) : undefined,
-          category: form.category || undefined,
-          imageUrl,
-          condition: form.condition || undefined,
-          brandModel: form.brandModel || undefined,
-          originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
-          negotiable: !!form.negotiable,
-          images: uploaded
-        } : {
-          type: form.type,
-          title: form.title,
-          description: form.description,
-          price: form.price ? Number(form.price) : undefined,
-          category: form.category || undefined,
-          imageUrl
-        }
-        const res = await fetch('/api/listings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        const res = await fetch('/api/listings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...specificPayload, type: form.type }) })
         const data = await res.json()
         if (data?.ok) {
           if (form.type === 'service') setServices([data.listing, ...services])
           else setProducts([data.listing, ...products])
-          setForm({ type: form.type, title: '', description: '', price: '', category: '', file: null, files: [], condition: '', brandModel: '', originalPrice: '', negotiable: false })
+          resetForm(form.type)
           setOpen(false)
         }
       }
-    } catch (e) {}
-    setLoading(false)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const resetForm = (type) => {
+    setForm({ 
+      type, title: '', description: '', price: '', category: '', 
+      contactPhone: '', files: [], condition: '', brandModel: '', 
+      originalPrice: '', negotiable: false, skills: '', pricingType: '', existingImages: [] 
+    })
+    setFormError('')
   }
 
   async function deleteListing(id) {
+    if(!confirm("Are you sure you want to delete this listing?")) return;
     try {
       const res = await fetch(`/api/listings/${id}`, { method: 'DELETE' })
       const data = await res.json()
       if (data?.ok) {
         setMyServices(prev => prev.filter(l => l.id !== id))
         setMyProducts(prev => prev.filter(l => l.id !== id))
+        setServices(prev => prev.filter(l => l.id !== id))
+        setProducts(prev => prev.filter(l => l.id !== id))
       }
-    } catch (e) {}
+    } catch (e) { console.error(e) }
   }
 
   function startEdit(listing) {
@@ -217,177 +233,252 @@ export default function CollegeDashboardPage() {
       description: listing.description || '',
       price: listing.price ?? '',
       category: listing.category || '',
-      file: null,
       files: [],
       condition: listing.condition || '',
       brandModel: listing.brandModel || '',
       originalPrice: listing.originalPrice ?? '',
-      negotiable: !!listing.negotiable
+      negotiable: !!listing.negotiable,
+      contactPhone: listing.contactPhone || '',
+      skills: listing.skills || '',
+      pricingType: listing.pricingType || '',
+      existingImages: Array.isArray(listing.images) && listing.images.length ? listing.images : (listing.imageUrl ? [listing.imageUrl] : [])
     })
     setOpen(true)
   }
 
-  
-
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <SidebarProvider>
         <AppSidebar />
-        <SidebarTrigger />
         <SidebarInset>
-          <div className="max-w-5xl mx-auto px-4 py-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">{collegeName} Dashboard</h1>
-            {view === 'overview' ? (
-              <p className="text-gray-700">Browse services and products from your college community.</p>
-            ) : null}
-            {view === 'services' ? <Section type="service" items={services} /> : null}
-            {view === 'products' ? (
-              <div>
-                <Section type="product" items={products.map(p => ({ ...p, onClick: () => { setSelected(p); setDetailOpen(true) } }))} />
-                <div className="hidden" />
-              </div>
-            ) : null}
-            {view === 'mine' ? (
-              <div className="space-y-8">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">{user?.name}&apos;s Services</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {myServices.map((it) => (
-                      <div key={it.id} className="bg-white rounded-lg shadow overflow-hidden animate-in fade-in">
-                        {it.imageUrl ? <img src={it.imageUrl} alt={it.title} className="w-full h-40 object-cover" /> : null}
-                        <div className="p-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900">{it.title}</h3>
-                            {typeof it.price === 'number' ? <span className="text-sm text-gray-700">₹{it.price}</span> : null}
-                          </div>
-                          <p className="text-gray-700 mt-2">{it.description}</p>
-                          <div className="mt-3 flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => startEdit(it)}>Edit</Button>
-                            <Button variant="destructive" onClick={() => deleteListing(it.id)}>Delete</Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">{user?.name}&apos;s Products</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {myProducts.map((it) => (
-                      <div key={it.id} className="bg-white rounded-lg shadow overflow-hidden animate-in fade-in">
-                        {it.imageUrl ? <img src={it.imageUrl} alt={it.title} className="w-full h-40 object-cover" /> : null}
-                        <div className="p-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900">{it.title}</h3>
-                            {typeof it.price === 'number' ? <span className="text-sm text-gray-700">₹{it.price}</span> : null}
-                          </div>
-                          <p className="text-gray-700 mt-2">{it.description}</p>
-                          <div className="mt-3 flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => startEdit(it)}>Edit</Button>
-                            <Button variant="destructive" onClick={() => deleteListing(it.id)}>Delete</Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </div>
-          {(view === 'services' || view === 'products') && (
-            <div className="fixed bottom-6 right-6">
-              <Button onClick={() => { setEditingId(null); setForm(prev => ({ ...prev, type: view === 'products' ? 'product' : 'service', title: '', description: '', price: '', category: '', file: null, files: [], condition: '', brandModel: '', originalPrice: '', negotiable: false })); setOpen(true) }} className="animate-in fade-in zoom-in bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg rounded-full px-4 py-3">
-                Add your {view === 'products' ? 'product' : 'service'}
-              </Button>
+          {/* Header Section */}
+          <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-white/80 px-4 backdrop-blur-md transition-all">
+            <SidebarTrigger className="-ml-1" />
+            <div className="h-4 w-px bg-slate-200" />
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <span className="font-semibold text-slate-900">{collegeName}</span>
+              <span>/</span>
+              <span className="capitalize">{view}</span>
             </div>
-          )}
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add {form.type === 'product' ? 'Product' : 'Service'}</DialogTitle>
-                <DialogDescription>Fill details and upload photos.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={submitListing} className="mt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Input placeholder={form.type === 'product' ? 'Product title' : 'Service title'} value={form.title ?? ''} onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))} />
-                  {form.type === 'product' ? (
-                    <select value={form.category ?? ''} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} className="border rounded px-3 py-2">
-                      <option value="">Select category</option>
-                      <option>Books</option>
-                      <option>Electronics</option>
-                      <option>Hostel essentials</option>
-                      <option>Clothing</option>
-                      <option>Cycle</option>
-                      <option>Accessories</option>
-                      <option>Others</option>
-                    </select>
-                  ) : (
-                    <Input placeholder="Category" value={form.category ?? ''} onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))} />
-                  )}
-                  <textarea placeholder="Description" value={form.description ?? ''} onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))} className="border rounded px-3 py-2 h-24 col-span-1 md:col-span-2" />
-                  {form.type === 'product' ? (
+            <div className="ml-auto flex items-center gap-2">
+               {/* User Avatar Placeholder */}
+               <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-medium">
+                  {user?.name?.charAt(0) || <User className="w-4 h-4"/>}
+               </div>
+            </div>
+          </header>
+
+          <main className="flex flex-1 flex-col gap-8 p-4 md:p-8 max-w-7xl mx-auto w-full">
+            
+            {/* Dashboard Intro */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  Marketplace
+                </h1>
+                <p className="text-slate-500">
+                  Discover products and services within your campus.
+                </p>
+              </div>
+
+              {/* View Switcher */}
+              <div className="bg-white p-1 rounded-lg border shadow-sm inline-flex">
+                {[
+                  { id: 'overview', label: 'Overview' },
+                  { id: 'services', label: 'Services' },
+                  { id: 'products', label: 'Products' },
+                  { id: 'mine', label: 'My Listings' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleViewChange(tab.id)}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                      view === tab.id 
+                      ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
+                      : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <AnimatePresence mode="wait">
+              {isFetching ? (
+                <div className="flex items-center justify-center h-64 w-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                </div>
+              ) : (
+                <motion.div
+                  key={view}
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit={{ opacity: 0, y: 10 }}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                >
+                  {/* Overview View */}
+                  {view === 'overview' && (
                     <>
-                      <select value={form.condition ?? ''} onChange={(e) => setForm(prev => ({ ...prev, condition: e.target.value }))} className="border rounded px-3 py-2">
-                        <option value="">Condition</option>
-                        <option>New</option>
-                        <option>Like New</option>
-                        <option>Good</option>
-                        <option>Used</option>
-                        <option>Heavily Used</option>
-                      </select>
-                      <Input placeholder="Brand/Model (optional)" value={form.brandModel ?? ''} onChange={(e) => setForm(prev => ({ ...prev, brandModel: e.target.value }))} />
-                      <Input placeholder="Selling Price (₹)" value={String(form.price ?? '')} onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value }))} />
-                      <Input placeholder="Original Price (optional)" value={String(form.originalPrice ?? '')} onChange={(e) => setForm(prev => ({ ...prev, originalPrice: e.target.value }))} />
-                      <div className="flex items-center gap-2">
-                        <input id="negotiable" type="checkbox" checked={form.negotiable} onChange={(e) => setForm(prev => ({ ...prev, negotiable: e.target.checked }))} />
-                        <label htmlFor="negotiable" className="text-sm text-gray-700">Is the price negotiable?</label>
+                      <div className="col-span-full mb-2 flex items-center gap-2">
+                        <ShoppingBag className="w-5 h-5 text-indigo-600"/>
+                        <h2 className="text-xl font-semibold">Latest Products</h2>
                       </div>
+                      {products.slice(0, 4).map(p => (
+                        <ListingCard key={p.id} item={p} type="product" onClick={() => { setSelected(p); setDetailOpen(true) }} />
+                      ))}
+                      {products.length === 0 && <EmptyState type="products" />}
+                      
+                      <div className="col-span-full mt-8 mb-2 flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-indigo-600"/>
+                        <h2 className="text-xl font-semibold">Recent Services</h2>
+                      </div>
+                      {services.slice(0, 4).map(s => (
+                        <ListingCard key={s.id} item={s} type="service" />
+                      ))}
+                       {services.length === 0 && <EmptyState type="services" />}
                     </>
-                  ) : (
-                    <Input placeholder="Price (optional)" value={String(form.price ?? '')} onChange={(e) => setForm(prev => ({ ...prev, price: e.target.value }))} />
                   )}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">{form.type === 'product' ? 'Product Photos (1–6)' : 'Service Photo (optional)'}</label>
-                  <input type="file" accept="image/*" multiple onChange={(e) => setForm(prev => ({ ...prev, files: Array.from(e.target.files || []) }))} className="w-full" />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={loading} className="bg-linear-to-r from-blue-600 to-indigo-600 text-white">Add</Button>
-                </div>
-              </form>
-          </DialogContent>
-          </Dialog>
-          <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-            <DialogContent>
-              {selected ? (
-                <div className="space-y-4">
-                  <DialogHeader>
-                    <DialogTitle>{selected.title || 'Product Details'}</DialogTitle>
-                    <DialogDescription>View all information and photos</DialogDescription>
-                  </DialogHeader>
-                  <Carousel images={selected.images} fallback={selected.imageUrl} alt={selected.title} className="w-full h-56 object-cover rounded" />
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900">{selected.title}</h3>
-                      <div className="mt-1 text-sm text-gray-600">{selected.category}</div>
-                    </div>
-                    {typeof selected.price === 'number' ? (
-                      <div className="text-right">
-                        <div className="text-base font-semibold text-gray-900">₹{selected.price}</div>
-                        {typeof selected.originalPrice === 'number' ? <div className="text-xs text-gray-500 line-through">₹{selected.originalPrice}</div> : null}
-                        {selected.negotiable ? <div className="mt-1 inline-block rounded bg-green-50 text-green-700 text-xs px-2 py-1">Negotiable</div> : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  {selected.condition ? <div className="text-sm text-gray-700">Condition: {selected.condition}</div> : null}
-                  {selected.brandModel ? <div className="text-sm text-gray-700">Brand/Model: {selected.brandModel}</div> : null}
-                  <p className="text-gray-700">{selected.description}</p>
-                  <div className="text-sm text-gray-500">By {selected.user?.name}</div>
-                </div>
-              ) : null}
+
+                  {/* Products View */}
+                  {view === 'products' && (
+                    products.length > 0 
+                    ? products.map(p => <ListingCard key={p.id} item={p} type="product" onClick={() => { setSelected(p); setDetailOpen(true) }} />)
+                    : <EmptyState type="products" />
+                  )}
+
+                  {/* Services View */}
+                  {view === 'services' && (
+                     services.length > 0 
+                     ? services.map(s => <ListingCard key={s.id} item={s} type="service" />)
+                     : <EmptyState type="services" />
+                  )}
+
+                  {/* My Listings View */}
+                  {view === 'mine' && (
+                    <>
+                      <div className="col-span-full mb-2"><h2 className="text-xl font-semibold border-b pb-2">My Services</h2></div>
+                      {myServices.length > 0 ? myServices.map(s => (
+                        <ListingCard key={s.id} item={s} type="service" isMine onEdit={startEdit} onDelete={deleteListing} />
+                      )) : <div className="col-span-full text-slate-400 italic">No services posted yet.</div>}
+
+                      <div className="col-span-full mt-8 mb-2"><h2 className="text-xl font-semibold border-b pb-2">My Products</h2></div>
+                      {myProducts.length > 0 ? myProducts.map(p => (
+                        <ListingCard key={p.id} item={p} type="product" isMine onEdit={startEdit} onDelete={deleteListing} onClick={() => { setSelected(p); setDetailOpen(true) }} />
+                      )) : <div className="col-span-full text-slate-400 italic">No products posted yet.</div>}
+                    </>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </main>
+
+          {/* Floating Action Button */}
+          {(view === 'services' || view === 'products') && (
+            <motion.div 
+              initial={{ scale: 0 }} 
+              animate={{ scale: 1 }} 
+              className="fixed bottom-8 right-8 z-50"
+            >
+              <Button 
+                onClick={() => { 
+                  setEditingId(null); 
+                  resetForm(view === 'products' ? 'product' : 'service'); 
+                  setOpen(true) 
+                }} 
+                className="h-14 w-14 rounded-full bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-200 flex items-center justify-center transition-all hover:scale-110"
+              >
+                <Plus className="w-6 h-6 text-white" />
+              </Button>
+            </motion.div>
+          )}
+
+          {/* --- DIALOGS --- */}
+          
+          {/* Add/Edit Listing Dialog */}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingId ? 'Edit' : 'Add'} {form.type === 'product' ? 'Product' : 'Service'}</DialogTitle>
+                <DialogDescription>
+                  Fill in the details below to list your item on the marketplace.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <ListingForm
+                form={form}
+                setForm={setForm}
+                isSubmitting={isSubmitting}
+                submitListing={submitListing}
+                formError={formError}
+                editingId={editingId}
+                onCancel={() => setOpen(false)}
+                setFormError={setFormError}
+              />
             </DialogContent>
           </Dialog>
+
+          {/* Product Detail Modal */}
+          <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+            <DialogContent className="max-w-3xl p-0 overflow-hidden">
+              <DialogTitle className="sr-only">{selected?.title || 'Listing Details'}</DialogTitle>
+               {selected && (
+                 <div className="flex flex-col md:flex-row">
+                    <div className="w-full md:w-1/2 bg-black flex items-center justify-center">
+                       <Carousel 
+                         images={(selected.images && selected.images.length ? selected.images : (selected.imageUrl ? [selected.imageUrl] : []))} 
+                         className="w-full" 
+                         height="100%" 
+                       />
+                    </div>
+                    <div className="w-full md:w-1/2 p-6 flex flex-col">
+                       <div className="flex justify-between items-start">
+                         <div>
+                            <Badge variant="secondary" className="mb-2">{selected.category}</Badge>
+                            <h2 className="text-2xl font-bold text-slate-900">{selected.title}</h2>
+                         </div>
+                         <div className="text-right">
+                           <div className="text-xl font-bold text-indigo-600">₹{selected.price}</div>
+                           {selected.negotiable && <span className="text-xs text-green-600 font-medium">Negotiable</span>}
+                         </div>
+                       </div>
+                       
+                       <div className="mt-6 space-y-4 flex-1">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="bg-slate-50 p-3 rounded-lg">
+                              <span className="block text-slate-400 text-xs uppercase">Condition</span>
+                              <span className="font-medium">{selected.condition || 'N/A'}</span>
+                            </div>
+                            <div className="bg-slate-50 p-3 rounded-lg">
+                              <span className="block text-slate-400 text-xs uppercase">Brand</span>
+                              <span className="font-medium">{selected.brandModel || 'N/A'}</span>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-slate-900 mb-1">Description</h4>
+                            <p className="text-slate-600 text-sm leading-relaxed">{selected.description}</p>
+                          </div>
+                       </div>
+
+                       <div className="mt-8 pt-4 border-t flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                             <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">{selected.user?.name?.charAt(0)}</div>
+                             <div className="text-sm">
+                               <p className="font-medium text-slate-900">{selected.user?.name}</p>
+                               <p className="text-slate-400 text-xs">Seller</p>
+                             </div>
+                          </div>
+                          {selected.contactPhone && <WhatsAppButton phone={selected.contactPhone} productName={selected.title} />}
+                       </div>
+                    </div>
+                 </div>
+               )}
+            </DialogContent>
+          </Dialog>
+
         </SidebarInset>
       </SidebarProvider>
     </div>

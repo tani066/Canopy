@@ -51,7 +51,7 @@ export async function GET(request) {
   const listings = await prisma.listing.findMany({
     where,
     orderBy: { createdAt: 'desc' },
-    select: { id: true, title: true, description: true, type: true, price: true, category: true, imageUrl: true, condition: true, brandModel: true, originalPrice: true, negotiable: true, images: true, createdAt: true, user: { select: { id: true, name: true } } }
+    select: { id: true, title: true, description: true, type: true, price: true, category: true, imageUrl: true, contactPhone: true, condition: true, brandModel: true, originalPrice: true, negotiable: true, images: true, skills: true, pricingType: true, createdAt: true, user: { select: { id: true, name: true } } }
   })
   return NextResponse.json({ ok: true, listings })
 }
@@ -71,11 +71,14 @@ export async function POST(request) {
   const originalPrice = typeof body.originalPrice === 'number' ? body.originalPrice : null
   const negotiable = typeof body.negotiable === 'boolean' ? body.negotiable : null
   const images = Array.isArray(body.images) ? body.images.filter(u => typeof u === 'string' && u.trim()).slice(0, 6) : []
+  const contactPhone = (body.contactPhone || '').trim() || null
+  const skills = (body.skills || '').trim() || null
+  const pricingType = (body.pricingType || '').trim() || null
   if (!title || !description || !['service', 'product'].includes(type)) {
     return NextResponse.json({ ok: false, error: 'missing_fields' }, { status: 400 })
   }
   const dbUser = await prisma.user.findUnique({ where: { id: user.uid }, select: { id: true, collegeId: true } })
   if (!dbUser) return NextResponse.json({ ok: false }, { status: 401 })
-  const created = await prisma.listing.create({ data: { title, description, type, price, category, imageUrl, condition, brandModel, originalPrice, negotiable, images, userId: dbUser.id, collegeId: dbUser.collegeId } })
+  const created = await prisma.listing.create({ data: { title, description, type, price, category, imageUrl, contactPhone, condition, brandModel, originalPrice, negotiable, images, skills, pricingType, userId: dbUser.id, collegeId: dbUser.collegeId } })
   return NextResponse.json({ ok: true, listing: created })
 }
