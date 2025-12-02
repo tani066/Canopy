@@ -1,16 +1,32 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input } from "@/components/ui/input"
-const LandingPage = () => {
-  const [showCollegeInput, setShowCollegeInput] = useState(false)
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, Sparkles, Building2, ChevronRight, Loader2, ArrowRight } from 'lucide-react'
+// Ensure this component exists in your project, or the page will break
+import LiquidEther from './Liquidether'
+
+// --- Utility Components ---
+const Badge = ({ children }) => (
+  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm backdrop-blur-sm">
+    <Sparkles className="w-3 h-3" />
+    {children}
+  </span>
+)
+
+export default function LandingPage() {
+  const [step, setStep] = useState('intro') // 'intro' | 'search'
   const [collegeQuery, setCollegeQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [selectedCollege, setSelectedCollege] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
+  
+  const searchRef = useRef(null)
   const router = useRouter()
 
+  // --- Auth Check ---
   useEffect(() => {
     async function check() {
       try {
@@ -25,163 +41,251 @@ const LandingPage = () => {
     check()
   }, [router])
 
+  // --- Search Logic ---
   useEffect(() => {
     const controller = new AbortController()
     const q = collegeQuery.trim()
+    
     async function fetchSuggestions() {
-      if (!showCollegeInput || q.length < 1) {
+      if (step !== 'search' || q.length < 1) {
         setSuggestions([])
         return
       }
       try {
         setLoading(true)
-        const res = await fetch(`/api/colleges?query=${encodeURIComponent(q)}&limit=8`, { signal: controller.signal })
+        const res = await fetch(`/api/colleges?query=${encodeURIComponent(q)}&limit=5`, { signal: controller.signal })
         const data = await res.json()
         const list = Array.isArray(data.results)
           ? data.results.map(item => (typeof item === 'string' ? { name: item } : item))
           : []
         setSuggestions(list)
       } catch (e) {
-        if (e.name !== 'AbortError') {
-          setSuggestions([])
-        }
+        if (e.name !== 'AbortError') setSuggestions([])
       } finally {
         setLoading(false)
       }
     }
-    fetchSuggestions()
-    return () => controller.abort()
-  }, [collegeQuery, showCollegeInput])
 
+    const timeoutId = setTimeout(fetchSuggestions, 300) // Debounce
+    return () => {
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [collegeQuery, step])
+
+  // --- Handlers ---
   function handleSearch() {
-    // Enforce selection from suggestions
-    const name = selectedCollege?.name
-    if (!name) return
-    const encoded = encodeURIComponent(name)
+    if (!selectedCollege) return
+    const encoded = encodeURIComponent(selectedCollege.name)
     router.push(`/college/${encoded}/login`)
   }
 
+  const handleSelect = (s) => {
+    setSelectedCollege(s)
+    setCollegeQuery(s.name)
+    setSuggestions([])
+  }
+
+  // Close dropdown if clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsFocused(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [searchRef]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="bg-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              {/* Enhanced Logo */}
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
-                  <path d="M6 8a2 2 0 11-4 0 2 2 0 014 0zM4 15a4 4 0 00-8 0v3h8v-3z"/>
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  Canopy
-                </h1>
-                <p className="text-sm text-gray-500">Student Marketplace</p>
-              </div>
+    <div className="relative min-h-screen w-full overflow-hidden font-sans selection:bg-indigo-500/30">
+      
+      {/* 1. Background Layer */}
+      <div className="absolute inset-0 z-0">
+        <LiquidEther
+          colors={['#4F46E5', '#C026D3', '#8B5CF6']} // Indigo, Fuchsia, Violet
+          mouseForce={20}
+          cursorSize={100}
+          isViscous={false}
+          viscous={30}
+          iterationsViscous={32}
+          iterationsPoisson={32}
+          resolution={0.5}
+          isBounce={false}
+          autoDemo={true}
+          autoSpeed={0.4}
+          autoIntensity={1.8}
+          style={{ width: '100%', height: '100%' }}
+        />
+        {/* Dark Gradient Overlay for Contrast */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-slate-900/60 pointer-events-none" />
+        {/* Noise Texture for Polish */}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
+      </div>
+
+      {/* 2. Navigation */}
+      <header className="relative z-20 w-full pt-6 px-6">
+        <nav className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center shadow-lg">
+              <Building2 className="text-white w-5 h-5" />
             </div>
-            
-            {/* Navigation */}
-            <nav className="hidden md:flex space-x-8">
-              <a href="#" className="text-gray-700 hover:text-blue-600 font-medium">Browse</a>
-              <a href="#" className="text-gray-700 hover:text-blue-600 font-medium">How it Works</a>
-              <a href="#" className="text-gray-700 hover:text-blue-600 font-medium">About</a>
-            </nav>
-            
-            {/* Login Button */}
-            <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition duration-200">
-              Sign In
-            </button>
+            <span className="text-xl font-bold text-white tracking-tight">Canopy</span>
           </div>
-        </div>
+          <button className="text-sm font-medium text-white/90 bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-md px-5 py-2.5 rounded-full transition-all duration-300">
+            Sign In
+          </button>
+        </nav>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Connect, Learn & 
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Earn
-            </span>
-          </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            The ultimate student marketplace where you can offer services, sell products, 
-            and connect with peers in your local area. From tutoring to event management, 
-            digital marketing to handmade crafts - everything in one place.
-          </p>
+      {/* 3. Main Content */}
+      <main className="relative z-10 flex flex-col items-center justify-center min-h-[85vh] px-4">
+        
+        {/* Headings */}
+        <div className="text-center max-w-3xl mx-auto mb-10 space-y-6">
           
-          {/* College Input (hidden until Get Started click) */}
-          {showCollegeInput && (
-            <div className="max-w-md mx-auto mb-12">
-              <div className="flex items-center">
-              <div className="relative w-full">
-                <Input
-                  type="text"
-                  value={collegeQuery}
-                  onChange={(e) => { setCollegeQuery(e.target.value); setSelectedCollege(null) }}
-                  placeholder="Enter your college name"
-                  className="w-full px-4 py-3 rounded-lg border-0 text-gray-900 shadow-sm focus:outline-none bg-white"
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch() } }}
-                />
-                {(suggestions.length > 0 || loading) && (
-                  <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg text-left">
-                    {loading && (
-                      <div className="px-4 py-3 text-sm text-gray-500">Searching…</div>
-                    )}
-                    {!loading && suggestions.map((s, idx) => (
-                      <button
-                        type="button"
-                        key={`${s.name}-${idx}`}
-                        className="w-full text-left px-4 py-3 hover:bg-blue-50 focus:bg-blue-50"
-                        onClick={() => { setSelectedCollege(s); setCollegeQuery(s.name) }}
-                      >
-                        <span className="font-medium text-gray-900">{s.name}</span>
-                        {s.domain ? (
-                          <span className="ml-2 text-gray-500 text-sm">@{s.domain}</span>
-                        ) : null}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className='ml-4'>
-                <button
-                  onClick={handleSearch}
-                  disabled={!selectedCollege}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition duration-200 shadow-lg cursor-pointer disabled:opacity-60"
-                >
-                  Search
-                </button>
-              </div>
-              </div>
-              {!selectedCollege && (
-                <p className="mt-2 text-sm text-gray-600 text-center">Please select a college from the list.</p>
-              )}
-            </div>
-          )}
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-5xl md:text-7xl font-extrabold text-white tracking-tight leading-[1.1] drop-shadow-sm"
+          >
+            Connect, Learn & <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-purple-200">Earn Together.</span>
+          </motion.h1>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition duration-200 shadow-lg cursor-pointer"
-              onClick={() => setShowCollegeInput(true)}
-            >
-              Get Started
-            </button>
-            
-          </div>
-          
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-lg md:text-xl text-indigo-100/90 max-w-2xl mx-auto leading-relaxed"
+          >
+            The exclusive platform to offer services, sell products, and network with peers within your specific college campus.
+          </motion.p>
         </div>
-      </section>
 
-      
+        {/* Interaction Card */}
+        <div className="w-full max-w-md h-[180px] relative perspective-1000">
+            <AnimatePresence mode="wait">
+                
+                {/* STATE 1: INTRO BUTTON */}
+                {step === 'intro' && (
+                    <motion.div
+                        key="intro-btn"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                        className="absolute inset-0 flex items-start justify-center"
+                    >
+                        <button
+                            onClick={() => setStep('search')}
+                            className="group relative inline-flex items-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-full text-lg font-semibold shadow-2xl shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-105 transition-all duration-300"
+                        >
+                            Find Your College
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center group-hover:bg-indigo-700 transition-colors">
+                                <ArrowRight className="w-4 h-4 text-white" />
+                            </div>
+                        </button>
+                    </motion.div>
+                )}
 
-      
+                {/* STATE 2: SEARCH INPUT */}
+                {step === 'search' && (
+                    <motion.div
+                        key="search-box"
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                        className="w-full"
+                    >
+                        <div 
+                          ref={searchRef}
+                          className={`
+                            bg-white rounded-2xl shadow-2xl shadow-indigo-900/20 p-2 
+                            transition-all duration-300 border
+                            ${isFocused ? 'ring-4 ring-indigo-500/20 border-indigo-500/50' : 'border-white/10'}
+                          `}
+                        >
+                            <div className="relative">
+                                <Search className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Search e.g. IIT Delhi..."
+                                    value={collegeQuery}
+                                    onChange={(e) => { 
+                                      setCollegeQuery(e.target.value)
+                                      setSelectedCollege(null) 
+                                    }}
+                                    onFocus={() => setIsFocused(true)}
+                                    className="w-full h-12 pl-12 pr-4 rounded-xl bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white transition-colors font-medium"
+                                />
+                                {loading && (
+                                  <div className="absolute right-4 top-3.5">
+                                    <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+                                  </div>
+                                )}
+                            </div>
+
+                            {/* Dropdown Results */}
+                            <AnimatePresence>
+                                {(suggestions.length > 0) && (
+                                    <motion.div 
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      className="mt-2 px-1 max-h-60 overflow-y-auto custom-scrollbar"
+                                    >
+                                        {suggestions.map((s, idx) => (
+                                            <button
+                                                key={`${s.name}-${idx}`}
+                                                onClick={() => handleSelect(s)}
+                                                className="w-full text-left px-4 py-3 hover:bg-indigo-50 rounded-xl transition-colors flex items-center justify-between group"
+                                            >
+                                                <div>
+                                                    <span className="block font-medium text-slate-700 group-hover:text-indigo-700">{s.name}</span>
+                                                    {s.domain && <span className="text-xs text-slate-400 font-mono">@{s.domain}</span>}
+                                                </div>
+                                                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500" />
+                                            </button>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                            
+                            {/* Action Button */}
+                            <button
+                                onClick={handleSearch}
+                                disabled={!selectedCollege}
+                                className={`
+                                    w-full mt-2 py-3.5 rounded-xl font-semibold text-white shadow-lg transition-all duration-200 flex items-center justify-center gap-2
+                                    ${selectedCollege 
+                                        ? 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-500/25 active:scale-[0.98] cursor-pointer' 
+                                        : 'bg-slate-300 cursor-not-allowed opacity-70'}
+                                `}
+                            >
+                                Continue to Dashboard
+                                {selectedCollege && <ArrowRight className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        
+                        <div className="text-center mt-4">
+                            <button 
+                                onClick={() => setStep('intro')} 
+                                className="text-indigo-100 hover:text-white text-sm font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+
+      </main>
+
+      {/* Footer Decoration */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none z-0" />
     </div>
   )
 }
-
-export default LandingPage
