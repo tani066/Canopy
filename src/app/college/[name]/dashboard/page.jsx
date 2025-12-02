@@ -133,18 +133,43 @@ export default function CollegeDashboardPage() {
 
     setIsSubmitting(true)
     try {
-      // (Keep existing upload logic exactly as provided)
       let imageUrl
       const uploaded = []
       const allFiles = (form.files || []).filter(Boolean).slice(0, 6)
+      const folder = form.type === 'product' ? 'canopy/products' : 'canopy/services'
+      const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || ''
+      const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || ''
+
+      const directCloudinary = Boolean(CLOUD_NAME && UPLOAD_PRESET)
+
       for (const f of allFiles) {
         if (!f) continue
-        const fd = new FormData()
-        fd.append('file', f)
-        fd.append('folder', form.type === 'product' ? 'canopy/products' : 'canopy/services')
-        const up = await fetch('/api/upload', { method: 'POST', body: fd })
-        const upData = await up.json()
-        if (upData?.ok) uploaded.push(upData.url)
+        if (directCloudinary) {
+          const fd = new FormData()
+          fd.append('file', f)
+          fd.append('folder', folder)
+          fd.append('upload_preset', UPLOAD_PRESET)
+          const up = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd })
+          if (up.ok) {
+            const upData = await up.json()
+            if (upData?.secure_url) uploaded.push(upData.secure_url)
+          } else {
+            const errText = await up.text().catch(() => '')
+            setFormError(errText || 'Image upload failed')
+          }
+        } else {
+          const fd = new FormData()
+          fd.append('file', f)
+          fd.append('folder', folder)
+          const up = await fetch('/api/upload', { method: 'POST', body: fd })
+          if (up.ok) {
+            const upData = await up.json()
+            if (upData?.ok) uploaded.push(upData.url)
+          } else {
+            const errText = await up.text().catch(() => '')
+            setFormError(errText || 'Image upload failed')
+          }
+        }
       }
       imageUrl = uploaded[0] || (editingId ? form.existingImages[0] : null)
 
