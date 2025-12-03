@@ -508,7 +508,7 @@ export default function CollegeDashboardPage() {
                                <p className="text-slate-400 text-xs">Seller</p>
                              </div>
                           </div>
-                          {selected.contactPhone && <WhatsAppButton phone={selected.contactPhone} productName={selected.title} compact />}
+                          {selected.contactPhone && <WhatsAppButton phone={selected.contactPhone} productName={selected.title} type={selected.type} compact />}
                        </div>
                     </div>
                  </div>
