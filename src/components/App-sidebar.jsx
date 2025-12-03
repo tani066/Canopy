@@ -26,6 +26,7 @@ const items = [
 export function AppSidebar() {
   const router = useRouter()
   const [user, setUser] = useState(null)
+  // actions are shown via hover popover; state not required
   useEffect(() => {
     let mounted = true
     async function load() {
@@ -42,7 +43,7 @@ export function AppSidebar() {
   function navigate(key) {
     const college = encodeURIComponent(user?.collegeName || '')
     const base = college ? `/college/${college}/dashboard` : '/'
-    const target = key === 'overview' ? base : `${base}?view=${key}`
+    const target = key === 'overview' ? base : (key === 'profile' ? `/college/${college}/profile` : `${base}?view=${key}`)
     router.replace(target)
   }
 
@@ -74,8 +75,9 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <Separator />
-        <div className="flex items-center justify-between px-2 py-2">
-          <div className="flex items-center gap-2">
+        <div className="relative px-2 py-3">
+          {/* Trigger Row */}
+          <div className="group flex items-center gap-2 cursor-pointer rounded-md px-2 py-1 hover:bg-slate-100">
             <div className="bg-gray-200 text-gray-700 w-8 h-8 rounded-full flex items-center justify-center font-semibold">
               {(user?.name || '?').slice(0,1).toUpperCase()}
             </div>
@@ -84,11 +86,15 @@ export function AppSidebar() {
               <span className="text-xs text-gray-500">{user?.collegeName || ''}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => navigate('profile')} className="text-sm text-blue-600">Profile</button>
-            <button onClick={logout} className="text-red-600">
-              <LogOut className="size-4" />
-            </button>
+          {/* Pop-out actions above on hover */}
+          <div className="absolute left-2 right-2 -top-2 -translate-y-full opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200">
+            <div className="flex items-center justify-between bg-white border rounded-md shadow-md px-3 py-2">
+              <button onClick={() => navigate('profile')} className="text-sm text-slate-700 hover:text-indigo-600">Profile</button>
+              <button onClick={logout} className="text-sm text-red-600 flex items-center gap-1">
+                <LogOut className="size-4" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </SidebarFooter>
