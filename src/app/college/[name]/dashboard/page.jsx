@@ -361,7 +361,7 @@ export default function CollegeDashboardPage() {
                         <h2 className="text-xl font-semibold">Recent Services</h2>
                       </div>
                       {services.slice(0, 4).map(s => (
-                        <ListingCard key={s.id} item={s} type="service" />
+                        <ListingCard key={s.id} item={s} type="service" onClick={() => { setSelected(s); setDetailOpen(true) }} />
                       ))}
                        {services.length === 0 && <EmptyState type="services" />}
                     </>
@@ -377,7 +377,7 @@ export default function CollegeDashboardPage() {
                   {/* Services View */}
                   {view === 'services' && (
                      services.length > 0 
-                     ? services.map(s => <ListingCard key={s.id} item={s} type="service" />)
+                     ? services.map(s => <ListingCard key={s.id} item={s} type="service" onClick={() => { setSelected(s); setDetailOpen(true) }} />)
                      : <EmptyState type="services" />
                   )}
 
@@ -386,7 +386,7 @@ export default function CollegeDashboardPage() {
                     <>
                       <div className="col-span-full mb-2"><h2 className="text-xl font-semibold border-b pb-2">My Services</h2></div>
                       {myServices.length > 0 ? myServices.map(s => (
-                        <ListingCard key={s.id} item={s} type="service" isMine onEdit={startEdit} onDelete={deleteListing} />
+                        <ListingCard key={s.id} item={s} type="service" isMine onEdit={startEdit} onDelete={deleteListing} onClick={() => { setSelected(s); setDetailOpen(true) }} />
                       )) : <div className="col-span-full text-slate-400 italic">No services posted yet.</div>}
 
                       <div className="col-span-full mt-8 mb-2"><h2 className="text-xl font-semibold border-b pb-2">My Products</h2></div>
@@ -471,17 +471,29 @@ export default function CollegeDashboardPage() {
                        </div>
                        
                        <div className="mt-6 space-y-4 flex-1">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="bg-slate-50 p-3 rounded-lg">
-                              <span className="block text-slate-400 text-xs uppercase">Condition</span>
-                              <span className="font-medium">{selected.condition || 'N/A'}</span>
+                          {selected.type === 'product' ? (
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div className="bg-slate-50 p-3 rounded-lg">
+                                <span className="block text-slate-400 text-xs uppercase">Condition</span>
+                                <span className="font-medium">{selected.condition || 'N/A'}</span>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-lg">
+                                <span className="block text-slate-400 text-xs uppercase">Brand</span>
+                                <span className="font-medium">{selected.brandModel || 'N/A'}</span>
+                              </div>
                             </div>
-                            <div className="bg-slate-50 p-3 rounded-lg">
-                              <span className="block text-slate-400 text-xs uppercase">Brand</span>
-                              <span className="font-medium">{selected.brandModel || 'N/A'}</span>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div className="bg-slate-50 p-3 rounded-lg">
+                                <span className="block text-slate-400 text-xs uppercase">Skills/Tools</span>
+                                <span className="font-medium">{selected.skills || 'N/A'}</span>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-lg">
+                                <span className="block text-slate-400 text-xs uppercase">Pricing</span>
+                                <span className="font-medium">{(selected.pricingType || '').replace('_', ' ') || 'N/A'}</span>
+                              </div>
                             </div>
-                          </div>
-                          
+                          )}
                           <div>
                             <h4 className="font-medium text-slate-900 mb-1">Description</h4>
                             <p className="text-slate-600 text-sm leading-relaxed">{selected.description}</p>
@@ -496,7 +508,7 @@ export default function CollegeDashboardPage() {
                                <p className="text-slate-400 text-xs">Seller</p>
                              </div>
                           </div>
-                          {selected.contactPhone && <WhatsAppButton phone={selected.contactPhone} productName={selected.title} />}
+                          {selected.contactPhone && <WhatsAppButton phone={selected.contactPhone} productName={selected.title} compact />}
                        </div>
                     </div>
                  </div>

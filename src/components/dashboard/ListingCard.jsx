@@ -78,7 +78,7 @@ export function ListingCard({ item, type, isMine, onEdit, onDelete, onClick }) {
           </div>
 
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            {item.contactPhone && <WhatsAppButton phone={item.contactPhone} productName={item.title} />}
+            {item.contactPhone && <WhatsAppButton phone={item.contactPhone} productName={item.title} compact className="shadow" />}
             {isMine && (
               <div className="flex gap-1 ml-2 border-l pl-2 border-slate-200">
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50" onClick={(e) => { e.stopPropagation(); onEdit(item) }}>
